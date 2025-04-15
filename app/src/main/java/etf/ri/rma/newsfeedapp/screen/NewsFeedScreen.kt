@@ -15,11 +15,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -33,7 +33,7 @@ fun NewsFeedScreen() {
     val dugmici = listOf(
         Pair("Sve", "filter_chip_all"), Pair("Politika", "filter_chip_pol"), Pair("Sport", "filter_chip_spo"), Pair("Umjetnost", "filter_chip_none"), Pair("Nauka / tehnologija", "filter_chip_sci")
     )
-
+    val vijestNaKojuSamKliknula = remember { mutableStateMapOf<String, Boolean>() }
     var trenutnoAktivna by rememberSaveable { mutableStateOf(0) }
 
     val stanjeTrenutno = rememberLazyListState()
@@ -44,6 +44,11 @@ fun NewsFeedScreen() {
         if (trenutnoAktivna == 0) {sveVijesti}
         else sveVijesti.filter {
             it.category.equals(dugmici[trenutnoAktivna].first, ignoreCase = true)
+        }
+    }
+    val klikNaVijest = remember {
+        { id: String ->
+            vijestNaKojuSamKliknula[id] = true
         }
     }
     Column {
@@ -78,6 +83,9 @@ fun NewsFeedScreen() {
             }
         }
         Spacer(Modifier.height(2.dp))
-        NewsList(filtrirane, stanjeTrenutno, dugmici[trenutnoAktivna].first)
+        NewsList(filtrirane, stanjeTrenutno, dugmici[trenutnoAktivna].first, vijestNaKojuSamKliknula, klikNaVijest)
+
+
     }
 }
+

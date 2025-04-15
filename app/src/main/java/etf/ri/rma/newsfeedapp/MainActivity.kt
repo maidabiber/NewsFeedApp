@@ -18,7 +18,8 @@ class MainActivity : ComponentActivity() {
             NewsFeedAppTheme {
                 Surface(
                     Modifier.fillMaxSize(),
-                          color = Color(0xFF, 0xD3, 0xD3, 0xD3)
+                            color = Color(0xFF, 0xD3, 0xD3, 0xD3)
+
 
                 ) {
 

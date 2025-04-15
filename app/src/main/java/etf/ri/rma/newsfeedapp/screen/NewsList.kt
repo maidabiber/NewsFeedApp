@@ -11,26 +11,35 @@ import androidx.compose.ui.unit.dp
 import etf.ri.rma.newsfeedapp.model.NewsItem
 
 @Composable
-fun NewsList(listaVijesti: List<NewsItem>,stanje: LazyListState, kat: String) {
-    LazyColumn(Modifier.testTag("news_list"),
-        contentPadding = PaddingValues(all = 8.dp),
-        state = stanje
-
+fun NewsList(listaVijesti: List<NewsItem>, stanje: LazyListState, kat: String,
+             vijestiNaKojeSamKliknula: Map<String, Boolean>,
+             onNewsClick: (String) -> Unit
+) {
+    LazyColumn(
+        Modifier.testTag("news_list"),
+        contentPadding = PaddingValues(all = 8.dp), state= stanje
     ) {
-        if (listaVijesti.isEmpty()==false) {
-            items( listaVijesti, { it.id }) {
-                trenutnaVijest ->
-                if (trenutnaVijest.isFeatured==false)
-                    StandardNewsCard(nasaTrenutnaVijest = trenutnaVijest)
-                else
-                    FeaturedNewsCard(nasaTrenutnaVijest = trenutnaVijest)
+        if (!listaVijesti.isEmpty()) {
+            items(listaVijesti, key = { it.id }) { trenutnaVijest ->
+                val jeLiKlikIzvrsen = vijestiNaKojeSamKliknula[trenutnaVijest.id] ?: false
+                if (!trenutnaVijest.isFeatured) {
+                    StandardNewsCard(nasaTrenutnaVijest = trenutnaVijest, onClick = { onNewsClick(trenutnaVijest.id) },
+
+                        izvrsenKlik = jeLiKlikIzvrsen
+                    )
+                } else {
+                    FeaturedNewsCard(
+                        nasaTrenutnaVijest = trenutnaVijest,
+                        onClick = { onNewsClick(trenutnaVijest.id) },
+                        jeLiKlikIzvrsen = jeLiKlikIzvrsen
+                    )
+                }
             }
         } else {
             item {
                 MessageCard("Nema pronađenih vijesti u kategoriji $kat")
             }
-
-
         }
     }
 }
+
