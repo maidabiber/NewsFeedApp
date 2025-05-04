@@ -40,7 +40,8 @@ android {
 }
 
 dependencies {
-
+// U build.gradle (Module) provjerite da imate:
+    implementation ("com.google.android.material:material:1.9.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -57,5 +58,15 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     androidTestImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    implementation ("com.google.android.material:material:1.11.0")
+    implementation("androidx.compose.ui:ui:...")
+    implementation ("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.compose.material3:material3:...")
+    implementation ("androidx.navigation:navigation-compose:2.7.7")
+implementation ("androidx.compose.material3:material3")
+    implementation ("androidx.compose.material3:material3:1.2.0")
+
+
+
 
 }

@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -31,71 +32,50 @@ import androidx.compose.ui.unit.sp
 import etf.ri.rma.newsfeedapp.R
 import etf.ri.rma.newsfeedapp.model.NewsItem
 
+
 @Composable
-fun StandardNewsCard(
-    nasaTrenutnaVijest: NewsItem,
-    onClick: () -> Unit,
-    izvrsenKlik: Boolean
-) {
-    val pozadinskaBoja = when {
-        izvrsenKlik -> Color(0xFFD3D3D3)
-        nasaTrenutnaVijest.category == "Sport" -> Color(0XFFADD8E6)
-        nasaTrenutnaVijest.category == "Nauka / tehnologija" -> Color(0xFF90EE90)
-        nasaTrenutnaVijest.category == "Politika" -> Color(0xFFE6E6FA)
-        else -> Color.White
-    }
-
-
-    Card(Modifier.fillMaxWidth().padding(8.dp).clickable(onClick = onClick),
+fun StandardNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
+    val pozadinskaBoja =  Color(0xFFE6E6FA)
+    Card( Modifier.fillMaxWidth().padding( 8.dp).clickable { onClick(nasaTrenutnaVijest.id) },
         shape = RoundedCornerShape(9.dp),
         elevation = CardDefaults.cardElevation(5.dp),
-        colors = CardDefaults.cardColors(containerColor = pozadinskaBoja)
-    )
- {
-        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.Top
-        ) {
-
+        colors = CardDefaults.cardColors(
+            containerColor = pozadinskaBoja
+    )) {
+        Row( Modifier.padding(13.dp),
+            verticalAlignment = Alignment.Top ) {
             Image(
                 painterResource(R.drawable.bosnjaci),
                 "image",
                 Modifier.size(91.dp).clip(RoundedCornerShape(9.dp)),
                 contentScale = ContentScale.None
             )
-
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Top
-            ) {
-                Text( nasaTrenutnaVijest.title, overflow = TextOverflow.Ellipsis,
-                    maxLines = 2, style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,
-                        fontSize = 19.5.sp
-                    ),
-
-                    modifier = Modifier.padding(top = 0.dp)
-                )
-
-                Spacer(Modifier.height(3.dp))
-
+            Spacer( Modifier.width(12.dp))
+            Column(Modifier.weight(1f),
+                verticalArrangement = Arrangement.Top) {
                 Text(
-                    nasaTrenutnaVijest.snippet,
+                    nasaTrenutnaVijest.title, overflow = TextOverflow.Ellipsis,maxLines = 2,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = FontFamily.SansSerif	,
+                        fontWeight = FontWeight.Bold,
+                        fontSize=19.5.sp
+                    ),
+                    modifier =   Modifier.padding(top = 0.dp)
+                )
+                Spacer(Modifier.height(3.dp))
+                Text( nasaTrenutnaVijest.snippet,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontFamily = FontFamily.SansSerif,
                         fontSize = 15.5.sp,
-                    ),
-                    maxLines = 2,
-
-                    )
-
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    "${nasaTrenutnaVijest.source} • ${nasaTrenutnaVijest.publishedDate}",
-                    style = MaterialTheme.typography.bodyMedium.copy(
+                    ), maxLines = 2,
+                )
+                Spacer( Modifier.height(4.dp))
+                Text( "${nasaTrenutnaVijest.source} • ${nasaTrenutnaVijest.publishedDate}",
+                    style= MaterialTheme.typography.bodyMedium.copy(
                         fontFamily = FontFamily.SansSerif,
                         fontSize = 11.5.sp,
-                    )
-                )
+                    ) )
             }
         }
     }

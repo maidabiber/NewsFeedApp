@@ -8,31 +8,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import etf.ri.rma.newsfeedapp.model.NewsItem
 
 @Composable
-fun NewsList(listaVijesti: List<NewsItem>, stanje: LazyListState, kat: String,
-             vijestiNaKojeSamKliknula: Map<String, Boolean>,
-             onNewsClick: (String) -> Unit
-) {
-    LazyColumn(
-        Modifier.testTag("news_list"),
-        contentPadding = PaddingValues(all = 8.dp), state= stanje
+fun NewsList(listaVijesti: List<NewsItem>,stanje: LazyListState, kat: String, navController: NavController) {
+    LazyColumn(Modifier.testTag("news_list"),
+        contentPadding = PaddingValues(all = 8.dp),
+        state = stanje
     ) {
-        if (!listaVijesti.isEmpty()) {
-            items(listaVijesti, key = { it.id }) { trenutnaVijest ->
-                val jeLiKlikIzvrsen = vijestiNaKojeSamKliknula[trenutnaVijest.id] ?: false
-                if (!trenutnaVijest.isFeatured) {
-                    StandardNewsCard(nasaTrenutnaVijest = trenutnaVijest, onClick = { onNewsClick(trenutnaVijest.id) },
+        if (listaVijesti.isEmpty()==false) {
+            items( listaVijesti, { it.id }) {
+                    trenutnaVijest ->
+                if (trenutnaVijest.isFeatured==false)
+                {
+                    StandardNewsCard(nasaTrenutnaVijest = trenutnaVijest, onClick = { newsId -> navController.navigate("/details/$newsId") }
+                    )
 
-                        izvrsenKlik = jeLiKlikIzvrsen
-                    )
-                } else {
-                    FeaturedNewsCard(
-                        nasaTrenutnaVijest = trenutnaVijest,
-                        onClick = { onNewsClick(trenutnaVijest.id) },
-                        jeLiKlikIzvrsen = jeLiKlikIzvrsen
-                    )
+                }
+                else
+                {
+                    FeaturedNewsCard(nasaTrenutnaVijest = trenutnaVijest) { newsId ->
+                        navController.navigate("/details/$newsId")
+                    }
                 }
             }
         } else {
@@ -42,4 +40,3 @@ fun NewsList(listaVijesti: List<NewsItem>, stanje: LazyListState, kat: String,
         }
     }
 }
-
