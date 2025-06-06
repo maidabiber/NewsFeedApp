@@ -29,26 +29,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import etf.ri.rma.newsfeedapp.R
 import etf.ri.rma.newsfeedapp.model.NewsItem
 
 
+
 @Composable
 fun StandardNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
-    val pozadinskaBoja =  Color(0xFFE6E6FA)
-    Card( Modifier.fillMaxWidth().padding( 8.dp).clickable { onClick(nasaTrenutnaVijest.id) },
+    val pozadinskaBoja = Color(0xFFE6E6FA)
+    Card( Modifier.fillMaxWidth().padding( 8.dp).clickable { onClick(nasaTrenutnaVijest.uuid) }, // Koristimo uuid
         shape = RoundedCornerShape(9.dp),
         elevation = CardDefaults.cardElevation(5.dp),
         colors = CardDefaults.cardColors(
             containerColor = pozadinskaBoja
-    )) {
+        )) {
         Row( Modifier.padding(13.dp),
             verticalAlignment = Alignment.Top ) {
             Image(
-                painterResource(R.drawable.bosnjaci),
-                "image",
-                Modifier.size(91.dp).clip(RoundedCornerShape(9.dp)),
-                contentScale = ContentScale.None
+                painter = rememberAsyncImagePainter(nasaTrenutnaVijest.imageUrl),
+                contentDescription = nasaTrenutnaVijest.title,
+                modifier = Modifier.size(91.dp).clip(RoundedCornerShape(9.dp)),
+                contentScale = ContentScale.Crop
             )
             Spacer( Modifier.width(12.dp))
             Column(Modifier.weight(1f),
@@ -60,7 +62,7 @@ fun StandardNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
                         fontWeight = FontWeight.Bold,
                         fontSize=19.5.sp
                     ),
-                    modifier =   Modifier.padding(top = 0.dp)
+                    modifier = Modifier.padding(top = 0.dp)
                 )
                 Spacer(Modifier.height(3.dp))
                 Text( nasaTrenutnaVijest.snippet,

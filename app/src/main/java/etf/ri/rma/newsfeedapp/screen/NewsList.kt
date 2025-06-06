@@ -11,31 +11,29 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import etf.ri.rma.newsfeedapp.model.NewsItem
 
+
 @Composable
-fun NewsList(listaVijesti: List<NewsItem>,stanje: LazyListState, kat: String, navController: NavController) {
+fun NewsList(listaVijesti: List<NewsItem>, stanje: LazyListState, navController: NavController, categoryFilter: String) {
     LazyColumn(Modifier.testTag("news_list"),
         contentPadding = PaddingValues(all = 8.dp),
         state = stanje
     ) {
-        if (listaVijesti.isEmpty()==false) {
-            items( listaVijesti, { it.id }) {
+        if (listaVijesti.isNotEmpty()) {
+            items( listaVijesti, { it.uuid }) { // Koristimo uuid kao ključ
                     trenutnaVijest ->
-                if (trenutnaVijest.isFeatured==false)
-                {
-                    StandardNewsCard(nasaTrenutnaVijest = trenutnaVijest, onClick = { newsId -> navController.navigate("/details/$newsId") }
-                    )
-
-                }
-                else
-                {
-                    FeaturedNewsCard(nasaTrenutnaVijest = trenutnaVijest) { newsId ->
-                        navController.navigate("/details/$newsId")
+                if (trenutnaVijest.isFeatured) {
+                    FeaturedNewsCard(nasaTrenutnaVijest = trenutnaVijest) { newsUuid ->
+                        navController.navigate("/details/$newsUuid")
+                    }
+                } else {
+                    StandardNewsCard(nasaTrenutnaVijest = trenutnaVijest) { newsUuid ->
+                        navController.navigate("/details/$newsUuid")
                     }
                 }
             }
         } else {
             item {
-                MessageCard("Nema pronađenih vijesti u kategoriji $kat")
+                MessageCard("Nema pronađenih vijesti u kategoriji $categoryFilter")
             }
         }
     }

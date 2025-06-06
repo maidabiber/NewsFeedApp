@@ -63,8 +63,6 @@ object NewsData {
 
 
     }
-    fun getNewsById(id: String): NewsItem? {
-        return getAllNews().find { it.id == id }
-    }
+
     }
 

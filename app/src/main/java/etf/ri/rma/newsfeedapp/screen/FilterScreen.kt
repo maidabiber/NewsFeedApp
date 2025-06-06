@@ -30,10 +30,7 @@ import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>?,
-                 onCategoryChanged: (String) -> Unit, onDateRangeChanged: (Pair<String, String>?) -> Unit,
-                 nezeljeneRijeci: List<String>, onUnwantedWordsChanged: (List<String>) -> Unit,
-                 kategorijaKojuSmoIzabrali: String) {
+fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>?, onCategoryChanged: (String) -> Unit, onDateRangeChanged: (Pair<String, String>?) -> Unit, nezeljeneRijeci: List<String>, onUnwantedWordsChanged: (List<String>) -> Unit, kategorijaKojuSmoIzabrali: String) {
 
 
 
@@ -41,10 +38,10 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
         Pair("Sve", "filter_chip_all"),
         Pair("Politika", "filter_chip_pol"),
         Pair("Sport", "filter_chip_spo"),
-        Pair("Umjetnost", "filter_chip_none"),
-        Pair("Nauka / tehnologija", "filter_chip_sci")
+        Pair("Umjetnost", "filter_chip_art"),
+        Pair("Nauka", "filter_chip_sci"),
+        Pair("Tehnologija", "filter_chip_tech")
     )
-
     var kategorijaKojaJeTrenutnoAktivna by rememberSaveable { mutableStateOf(dugmici.indexOfFirst { it.first == kategorijaKojuSmoIzabrali }.coerceAtLeast(0)) }
 
 
@@ -165,7 +162,7 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
                     disabledIndicatorColor = Color.Transparent, cursorColor = Color.Black
                 ),
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text),
-                        shape = RoundedCornerShape(8.dp),)
+                shape = RoundedCornerShape(8.dp),)
             Spacer(modifier = Modifier.width(34.dp))
             Button(
                 onClick = {
@@ -201,7 +198,7 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
         Spacer(modifier = Modifier.height(8.dp))
 
         Column(modifier = Modifier.testTag("filter_unwanted_list")
-                .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState())
         ) {
             unwantedWordsState.forEach { rijec ->
                 Text(text = rijec)
@@ -243,7 +240,7 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
                     }
                 },
                 dismissButton = { TextButton(onClick = { showDateRangePicker = false }) {
-                        Text("Odustani") }
+                    Text("Odustani") }
                 },
                 text = { DateRangePicker(state = datePickerState) }
             )
