@@ -127,7 +127,8 @@ interface SavedNewsDAO {
 
         val newsItems = newsIds.mapNotNull { newsId ->
             findNewsWithTags(newsId)?.toNewsItemForTest()
-        }
+        }.take(2)
+
         return newsItems
     }
 

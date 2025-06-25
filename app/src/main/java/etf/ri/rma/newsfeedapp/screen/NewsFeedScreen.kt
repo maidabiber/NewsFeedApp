@@ -85,6 +85,8 @@ fun NewsFeedScreen(
                 }
             }
 
+
+
             val sveVijestiIzKesa = savedNewsRepository.sveVijesti()
 
             val filtriraneVijesti = sveVijestiIzKesa.filter { newsItem ->

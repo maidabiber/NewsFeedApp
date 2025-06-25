@@ -18,7 +18,7 @@ class NewsDAO {
 
     companion object {
         private const val CATEGORY_API_CALL_COOLDOWN = 30_000L
-        private const val apiKljuc = "1gUpZfFzJpZDzcGvDqWcnc1hRiUq63lXaPZhF8SI"
+        private const val apiKljuc = "yyVpad0txezSPa7MHtxKv9RYrhA9Jt9RK7lMekLa"
         private const val baseUrl = "https://api.thenewsapi.com/v1/"
 
         private val mapiranje = mapOf(
