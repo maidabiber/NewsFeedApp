@@ -36,15 +36,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import etf.ri.rma.newsfeedapp.data.network.NewsDAO
-
+import etf.ri.rma.newsfeedapp.data.dao.SavedNewsRepository
+import etf.ri.rma.newsfeedapp.data.dao.NewsDAO
+import etf.ri.rma.newsfeedapp.data.dao.ImagaDAO
 import etf.ri.rma.newsfeedapp.model.NewsItem
-
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun NewsFeedScreen(navController: NavController = rememberNavController(), kategorijaKojuSmoIzabrali: String = "Sve",
-    opsegDatuma: Pair<String, String>? = null, onCategoryChanged: (String) -> Unit = {}, listaNezeljenihRijeci: List<String> = emptyList(), newsDao: NewsDAO
+fun NewsFeedScreen(
+    navController: NavController = rememberNavController(),
+    kategorijaKojuSmoIzabrali: String = "Sve",
+    opsegDatuma: Pair<String, String>? = null,
+    onCategoryChanged: (String) -> Unit = {},
+    listaNezeljenihRijeci: List<String> = emptyList(),
+    newsDao: NewsDAO,
+    savedNewsRepository: SavedNewsRepository
 ) {
     val pozadinskaBoja = Color(0xFFD3D3D3)
     val dateFormatter = remember {
@@ -58,83 +64,6 @@ fun NewsFeedScreen(navController: NavController = rememberNavController(), kateg
 
     val stanjeTrenutno = rememberLazyListState()
 
- /*   LaunchedEffect(kategorijaKojuSmoIzabrali, opsegDatuma, listaNezeljenihRijeci) {
-        loading = true
-        greska = null
-
-        try {
-            newsDao.popuniSaPocetnimVijestima()
-
-            if (kategorijaKojuSmoIzabrali != "Sve") {
-                newsDao.getTopStoriesByCategory(kategorijaKojuSmoIzabrali, true)
-            }
-
-            val allNewsFromCache = newsDao.getAllStories()
-
-            val filtriraneVijesti = allNewsFromCache.filter { newsItem ->
-                val odgovarajucaKat = if (kategorijaKojuSmoIzabrali == "Sve") {
-                    true
-                } else {
-                    val targetNewsItemApiCategory = newsDao.getNewsItemApiCategory(kategorijaKojuSmoIzabrali)
-                    newsItem.category.equals(targetNewsItemApiCategory, ignoreCase = true)
-                }
-
-
-                val matchesDateRange = if (opsegDatuma != null) {
-                    val (startDateStr, endDateStr) = opsegDatuma
-                    try {
-                        val datumVijesti = dateFormatter.parse(newsItem.publishedDate)
-                        val pocetniDatum = dateFormatter.parse(startDateStr)
-                        val krajnjiDatum = dateFormatter.parse(endDateStr)
-
-
-                        datumVijesti != null && !datumVijesti.before(pocetniDatum) && !datumVijesti.after(krajnjiDatum)
-                    } catch (e: Exception) {
-                        false
-                    }
-                } else true
-
-                val matchesUnwantedWords = if (listaNezeljenihRijeci.isNotEmpty()) {
-                    val combinedText = "${newsItem.title.orEmpty()} ${newsItem.snippet.orEmpty()}".lowercase(Locale.ROOT)
-                    listaNezeljenihRijeci.none { unwantedWord ->
-                        combinedText.contains(unwantedWord.lowercase(Locale.ROOT))
-                    }
-                } else true
-
-                odgovarajucaKat && matchesDateRange && matchesUnwantedWords
-            }
-
-
-            val sortiraneVijesti = filtriraneVijesti.sortedWith { a, b ->
-                val aIsFeatured = a.isFeatured
-                val bIsFeatured = b.isFeatured
-
-                when {
-                    aIsFeatured && !bIsFeatured -> -1
-                    !aIsFeatured && bIsFeatured -> 1
-                    else -> {
-                        try {
-                            val datumA = dateFormatter.parse(a.publishedDate) ?: Date(0)
-                            val datumB = dateFormatter.parse(b.publishedDate) ?: Date(0)
-                            datumB.compareTo(datumA)
-                        } catch (GRESKA: Exception) {
-                            0
-                        }
-                    }
-                }
-            }
-
-            vijestiKojeSuPrikazane = sortiraneVijesti
-
-        } catch (e: Exception) {
-            greska = "Došlo je do greške pri učitavanju vijesti: ${e.localizedMessage ?: "Nepoznata greška"}"
-
-            vijestiKojeSuPrikazane = emptyList()
-        } finally {
-            loading = false
-        }
-    }
-*/
     LaunchedEffect(kategorijaKojuSmoIzabrali, opsegDatuma, listaNezeljenihRijeci) {
         loading = true
         greska = null
@@ -142,19 +71,23 @@ fun NewsFeedScreen(navController: NavController = rememberNavController(), kateg
         try {
             newsDao.popuniSaPocetnimVijestima()
 
-            // Ako je izabrana kategorija različita od "Sve", dohvatimo i web vijesti za tu kategoriju
             if (kategorijaKojuSmoIzabrali != "Sve") {
-                newsDao.getTopStoriesByCategory(kategorijaKojuSmoIzabrali, true)
-            } else {
-                // Ako je "Sve", možeš ovde eventualno dohvatiti sve web vijesti ili ne raditi ništa,
-                // u zavisnosti od tvoje logike kako radi newsDao
+                val noveVijesti = newsDao.getTopStoriesByCategory(kategorijaKojuSmoIzabrali, true)
+                for (vijest in noveVijesti) {
+                    savedNewsRepository.sacuvajVijest(vijest)
+                    vijest.imageUrl?.let { url ->
+                        try {
+                            val tagovi = ImagaDAO().getTags(url)
+                            val id = savedNewsRepository.dohvatiIdVijestiPoUuid(vijest.uuid)
+                           if (id!=null) savedNewsRepository.dodajTagoveZaVijest(tagovi, id)
+                        } catch (_: Exception) { }
+                    }
+                }
             }
 
-            // Sada uzimamo sve vijesti iz baze, uključujući ručno unesene i web vijesti
-            val allNewsFromCache = newsDao.getAllStories()
+            val sveVijestiIzKesa = savedNewsRepository.sveVijesti()
 
-            val filtriraneVijesti = allNewsFromCache.filter { newsItem ->
-                // Provera kategorije (možeš i ovde malo pojednostaviti ako ti getNewsItemApiCategory nije potrebna)
+            val filtriraneVijesti = sveVijestiIzKesa.filter { newsItem ->
                 val odgovarajucaKat = if (kategorijaKojuSmoIzabrali == "Sve") {
                     true
                 } else {
@@ -162,7 +95,6 @@ fun NewsFeedScreen(navController: NavController = rememberNavController(), kateg
                     newsItem.category.equals(targetNewsItemApiCategory, ignoreCase = true)
                 }
 
-                // Filtriranje po datumu za sve vijesti (ručno unesene i web)
                 val matchesDateRange = if (opsegDatuma != null) {
                     val (startDateStr, endDateStr) = opsegDatuma
                     try {
@@ -176,7 +108,6 @@ fun NewsFeedScreen(navController: NavController = rememberNavController(), kateg
                     }
                 } else true
 
-                // Filtriranje po neželjenim rečima
                 val matchesUnwantedWords = if (listaNezeljenihRijeci.isNotEmpty()) {
                     val combinedText = "${newsItem.title.orEmpty()} ${newsItem.snippet.orEmpty()}".lowercase(Locale.ROOT)
                     listaNezeljenihRijeci.none { unwantedWord ->
@@ -187,7 +118,6 @@ fun NewsFeedScreen(navController: NavController = rememberNavController(), kateg
                 odgovarajucaKat && matchesDateRange && matchesUnwantedWords
             }
 
-            // Sortiranje kao i do sada
             val sortiraneVijesti = filtriraneVijesti.sortedWith { a, b ->
                 val aIsFeatured = a.isFeatured
                 val bIsFeatured = b.isFeatured
@@ -242,8 +172,7 @@ fun NewsFeedScreen(navController: NavController = rememberNavController(), kateg
                 )
             )
         },
-    ) {
-        paddingValues ->
+    ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -267,8 +196,7 @@ fun NewsFeedScreen(navController: NavController = rememberNavController(), kateg
                                 navController.navigate("/filters")
                             }
                         },
-                        label = {
-                            Text(naziv) },
+                        label = { Text(naziv) },
                         modifier = Modifier.testTag(tag),
                     )
                 }
@@ -277,7 +205,7 @@ fun NewsFeedScreen(navController: NavController = rememberNavController(), kateg
 
             when {
                 loading -> {
-                   CircularProgressIndicator(
+                    CircularProgressIndicator(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(9.dp)

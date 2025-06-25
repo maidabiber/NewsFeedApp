@@ -30,7 +30,7 @@ import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>?, onCategoryChanged: (String) -> Unit, onDateRangeChanged: (Pair<String, String>?) -> Unit, nezeljeneRijeci: List<String>, onUnwantedWordsChanged: (List<String>) -> Unit, kategorijaKojuSmoIzabrali: String) {
+fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String, String>?, onCategoryChanged: (String) -> Unit, onDateRangeChanged: (Pair<String, String>?) -> Unit, nezeljeneRijeci: List<String>, onUnwantedWordsChanged: (List<String>) -> Unit, kategorijaKojuSmoIzabrali: String) {
 
 
 
@@ -45,43 +45,43 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
     var kategorijaKojaJeTrenutnoAktivna by rememberSaveable { mutableStateOf(dugmici.indexOfFirst { it.first == kategorijaKojuSmoIzabrali }.coerceAtLeast(0)) }
 
 
-    var unesenaRijec by rememberSaveable { mutableStateOf("") }
-    var pocetniDatum by remember { mutableStateOf<Long?>(null) }
-    var krajnjiDatum by remember { mutableStateOf<Long?>(null) }
+    var unesenaNepozeljnaRijec by rememberSaveable { mutableStateOf("") }
+    var pocetakOdabranogDatuma by remember { mutableStateOf<Long?>(null) }
+    var krajOdabranogDatuma by remember { mutableStateOf<Long?>(null) }
 
-    val unwantedWordsState = remember { mutableStateListOf<String>().apply { addAll(nezeljeneRijeci) } }
-    val formatiranjeDatuma = remember {
+    val stanjeNezeljenihRijeci = remember { mutableStateListOf<String>().apply { addAll(nezeljeneRijeci) } }
+    val formatDatumaZaPrikaz = remember {
         val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-        sdf.timeZone = TimeZone.getTimeZone("UTC")  // Dodavanje vremenske zone UTC
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
         sdf
     }
 
-    var showDateRangePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDateRangePickerState()
+    var prikaziOdabirDatuma by remember { mutableStateOf(false) }
+    val stanjeOdabiraDatuma = rememberDateRangePickerState()
 
-    LaunchedEffect(opsegDatuma) {
-        if (opsegDatuma != null) {
-            val start = formatiranjeDatuma.parse(opsegDatuma.first)?.time
-            val end = formatiranjeDatuma.parse(opsegDatuma.second)?.time
-            if (end != null && start != null ) {
-                datePickerState.setSelection(start, end)
+    LaunchedEffect(odabraniOpsegDatuma) {
+        if (odabraniOpsegDatuma != null) {
+            val pocetak = formatDatumaZaPrikaz.parse(odabraniOpsegDatuma.first)?.time
+            val kraj = formatDatumaZaPrikaz.parse(odabraniOpsegDatuma.second)?.time
+            if (kraj != null && pocetak != null ) {
+                stanjeOdabiraDatuma.setSelection(pocetak, kraj)
             }
         }
     }
 
-    val dateRangeText = remember(datePickerState.selectedStartDateMillis, datePickerState.selectedEndDateMillis) {
-        if (datePickerState.selectedStartDateMillis != null && datePickerState.selectedEndDateMillis != null) {
-            formatiranjeDatuma.format(Date(datePickerState.selectedStartDateMillis!!)) to formatiranjeDatuma.format(Date(datePickerState.selectedEndDateMillis!!))
+    val dateRangeText = remember(stanjeOdabiraDatuma.selectedStartDateMillis, stanjeOdabiraDatuma.selectedEndDateMillis) {
+        if (stanjeOdabiraDatuma.selectedStartDateMillis != null && stanjeOdabiraDatuma.selectedEndDateMillis != null) {
+            formatDatumaZaPrikaz.format(Date(stanjeOdabiraDatuma.selectedStartDateMillis!!)) to formatDatumaZaPrikaz.format(Date(stanjeOdabiraDatuma.selectedEndDateMillis!!))
         } else {
             null }
     }
 
 
-    val odabranaKategorijaRez = dugmici.getOrNull(kategorijaKojaJeTrenutnoAktivna)?.first ?: "Sve"
-    val rezultatRaposnaDatuma = dateRangeText
-    val listaNezeljenihRijeci = unwantedWordsState.toList()
+    val odabranaKategorijaRezultat = dugmici.getOrNull(kategorijaKojaJeTrenutnoAktivna)?.first ?: "Sve"
+    val rezultatRasponaDatuma = dateRangeText
+    val finalnaListaNezeljenihRijeci = stanjeNezeljenihRijeci.toList()
 
-    val cont = LocalContext.current
+    val kontekst = LocalContext.current
     Column(modifier = Modifier.padding(20.dp).fillMaxSize()
     ) {
         Spacer(modifier = Modifier.height(15.dp))
@@ -129,7 +129,7 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
             }
             Spacer(modifier = Modifier.width(16.dp))
             Button(
-                onClick = { showDateRangePicker = true },
+                onClick = { prikaziOdabirDatuma = true },
                 modifier = Modifier.testTag("filter_daterange_button"),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(70, 70, 150),
@@ -150,8 +150,8 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
             TextField(
 
 
-                value = unesenaRijec,
-                onValueChange = { unesenaRijec = it },
+                value = unesenaNepozeljnaRijec,
+                onValueChange = { unesenaNepozeljnaRijec = it },
                 modifier = Modifier.width(226.dp).testTag("filter_unwanted_input") .shadow(4.dp, shape = RoundedCornerShape(8.dp)).background(ljubicasta, shape = RoundedCornerShape(8.dp)),
                 placeholder = {
                     Text(text="Unesite riječ", color = Color.DarkGray)
@@ -166,11 +166,11 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
             Spacer(modifier = Modifier.width(34.dp))
             Button(
                 onClick = {
-                    val rijec = unesenaRijec.trim()
+                    val rijec = unesenaNepozeljnaRijec.trim()
 
                     val poruka = if (rijec.isEmpty()) {
                         "Unesite riječ!"
-                    } else if (unwantedWordsState.any { it.equals(rijec, ignoreCase = true) }) {
+                    } else if (stanjeNezeljenihRijeci.any { it.equals(rijec, ignoreCase = true) }) {
                         "Nije moguće unijeti istu riječ više puta!"
                     } else {
                         null
@@ -178,10 +178,10 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
 
 
                     if (poruka != null) {
-                        Toast.makeText(cont, poruka, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(kontekst, poruka, Toast.LENGTH_SHORT).show()
                     } else {
-                        unwantedWordsState.add(rijec)
-                        unesenaRijec = ""
+                        stanjeNezeljenihRijeci.add(rijec)
+                        unesenaNepozeljnaRijec = ""
                     }
                 },   colors = ButtonDefaults.buttonColors(
                     containerColor = Color(70, 70, 150),
@@ -200,7 +200,7 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
         Column(modifier = Modifier.testTag("filter_unwanted_list")
             .verticalScroll(rememberScrollState())
         ) {
-            unwantedWordsState.forEach { rijec ->
+            stanjeNezeljenihRijeci.forEach { rijec ->
                 Text(text = rijec)
             }
         }
@@ -208,9 +208,9 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
 
         Button(
             onClick = {
-                onCategoryChanged(odabranaKategorijaRez)
-                onDateRangeChanged(rezultatRaposnaDatuma)
-                onUnwantedWordsChanged(listaNezeljenihRijeci)
+                onCategoryChanged(odabranaKategorijaRezultat)
+                onDateRangeChanged(rezultatRasponaDatuma)
+                onUnwantedWordsChanged(finalnaListaNezeljenihRijeci)
 
                 navController.popBackStack()
             },
@@ -222,27 +222,27 @@ fun FilterScreen(navController: NavController, opsegDatuma: Pair<String, String>
         ) {
             Text("Primijeni filtere")
         }
-        val pocetak = datePickerState.selectedStartDateMillis
-        val kraj = datePickerState.selectedEndDateMillis
-        if (showDateRangePicker) {
-            AlertDialog(onDismissRequest = { showDateRangePicker = false },
+        val pocetak = stanjeOdabiraDatuma.selectedStartDateMillis
+        val kraj = stanjeOdabiraDatuma.selectedEndDateMillis
+        if (prikaziOdabirDatuma) {
+            AlertDialog(onDismissRequest = { prikaziOdabirDatuma = false },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             if (pocetak != null && kraj != null) {
-                                pocetniDatum = pocetak
-                                krajnjiDatum = kraj
-                                showDateRangePicker = false
+                                pocetakOdabranogDatuma = pocetak
+                                krajOdabranogDatuma = kraj
+                                prikaziOdabirDatuma = false
                             }
                         }
                     ) {
                         Text("Potvrdi opseg datuma")
                     }
                 },
-                dismissButton = { TextButton(onClick = { showDateRangePicker = false }) {
+                dismissButton = { TextButton(onClick = { prikaziOdabirDatuma = false }) {
                     Text("Odustani") }
                 },
-                text = { DateRangePicker(state = datePickerState) }
+                text = { DateRangePicker(state = stanjeOdabiraDatuma) }
             )
         }
     }

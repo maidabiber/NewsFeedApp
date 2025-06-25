@@ -2,7 +2,6 @@
 package etf.ri.rma.newsfeedapp
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,22 +24,24 @@ import etf.ri.rma.newsfeedapp.screen.NewsDetailsScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import etf.ri.rma.newsfeedapp.data.network.NewsDAO
-
+import etf.ri.rma.newsfeedapp.data.dao.SavedNewsRepository
+import etf.ri.rma.newsfeedapp.data.db.NewsDatabase
+import etf.ri.rma.newsfeedapp.data.dao.NewsDAO
 import etf.ri.rma.newsfeedapp.screen.NewsFeedScreen
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             NewsFeedAppTheme {
-                Log.d("TEST_LOG", "MainActivity onCreate pozvan!")
                 var nepozeljneRijeci by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
                 var izabraniOpsegDatuma by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
                 var odabranaKategorija by rememberSaveable { mutableStateOf("Sve") }
 
                val sharedNewsDao = remember { NewsDAO() }
-
+                val database = NewsDatabase.getInstance(applicationContext)
+                val savedNewsRepository = SavedNewsRepository(database.savedNewsDAO())
                 Surface(
                     color = Color(0xFFD3D3D3),
                     modifier = Modifier.fillMaxSize()
@@ -55,7 +56,8 @@ class MainActivity : ComponentActivity() {
                         onDateRangeChanged = { izabraniOpsegDatuma = it },
                         rasponDatuma = izabraniOpsegDatuma,
                         onUnwantedWordsChanged = { nepozeljneRijeci = it },
-                        newsDao = sharedNewsDao
+                        newsDao = sharedNewsDao,
+                        savedNewsRepository = savedNewsRepository
                     )
                 }
             }
@@ -74,7 +76,8 @@ fun NavGraph(
     onCategoryChanged: (String) -> Unit,
     onUnwantedWordsChanged: (List<String>) -> Unit,
     nepozeljneRijeci: List<String>,
-    newsDao: NewsDAO
+    newsDao: NewsDAO,
+    savedNewsRepository: SavedNewsRepository
 ) {
 
     NavHost(navController = navController, startDestination = "/home") {
@@ -85,12 +88,13 @@ fun NavGraph(
                 kategorijaKojuSmoIzabrali = odabranaKategorija,
                 listaNezeljenihRijeci = nepozeljneRijeci,
                 onCategoryChanged = onCategoryChanged,
-                newsDao = newsDao
+                newsDao = newsDao,
+                savedNewsRepository = savedNewsRepository
             )
         }
         composable("/filters") {
             FilterScreen(
-                navController = navController, opsegDatuma = rasponDatuma,onDateRangeChanged = onDateRangeChanged,
+                navController = navController, odabraniOpsegDatuma = rasponDatuma,onDateRangeChanged = onDateRangeChanged,
                 nezeljeneRijeci = nepozeljneRijeci,
                 kategorijaKojuSmoIzabrali = odabranaKategorija,
                 onCategoryChanged = onCategoryChanged,
@@ -103,7 +107,7 @@ fun NavGraph(
         ) { backStackEntry ->
             val newsId = backStackEntry.arguments?.getString("newsId")
             if (newsId != null) {
-                NewsDetailsScreen(newsId = newsId, navController = navController, newsDao = newsDao)
+                NewsDetailsScreen(newsId = newsId, navController = navController, newsDao = newsDao, savedNewsRepository=savedNewsRepository)// savedNewsRepository = savedNewsRepository)
             } else {
                 Text("Greška: ID vijesti nije dostupan.")
             }
