@@ -4,4 +4,4 @@ NewsFeedApp aplikacija je individualni projekat razvijen u sklopu predmeta **Raz
 
 ##  Opis projekta
 
-Aplikacija  povezuje rad sa udaljenim API servisima i lokalnom bazom podataka, omogućavajući korisniku filtriranje sadržaja po datumu i nepoželjnim riječima, uz mogućnost pregleda sličnih objava na osnovu kategorija ili tagova. Omogućen je spremanje vijesti u lokalnu bazu kako bi sav sadržaj ostao dostupan korisniku i bez internet konekcije.
+Aplikacija  povezuje rad sa udaljenim API servisima i lokalnom bazom podataka, omogućavajući korisniku filtriranje sadržaja po datumu i nepoželjnim riječima, uz mogućnost pregleda sličnih objava na osnovu kategorija ili tagova. Omogućeno je spremanje vijesti u lokalnu bazu kako bi sav sadržaj ostao dostupan korisniku i bez internet konekcije.
