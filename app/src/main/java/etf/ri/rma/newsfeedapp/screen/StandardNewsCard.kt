@@ -22,33 +22,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
-import etf.ri.rma.newsfeedapp.R
 import etf.ri.rma.newsfeedapp.model.NewsItem
 
 
 
 @Composable
-fun StandardNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
-    val pozadinskaBoja = Color(0xFFE6E6FA)
-    Card( Modifier.fillMaxWidth().padding( 8.dp).clickable { onClick(nasaTrenutnaVijest.uuid) }, // Koristimo uuid
+fun StandardNewsCard(newsItem: NewsItem, onClick: (String) -> Unit) {
+    val backGroundColor = Color(0xFFE6E6FA)
+    Card( Modifier.fillMaxWidth().padding( 8.dp).clickable { onClick(newsItem.uuid) }, // Koristimo uuid
         shape = RoundedCornerShape(9.dp),
         elevation = CardDefaults.cardElevation(5.dp),
         colors = CardDefaults.cardColors(
-            containerColor = pozadinskaBoja
+            containerColor = backGroundColor
         )) {
         Row( Modifier.padding(13.dp),
             verticalAlignment = Alignment.Top ) {
             Image(
-                painter = rememberAsyncImagePainter(nasaTrenutnaVijest.imageUrl),
-                contentDescription = nasaTrenutnaVijest.title,
+                painter = rememberAsyncImagePainter(newsItem.imageUrl),
+                contentDescription = newsItem.title,
                 modifier = Modifier.size(91.dp).clip(RoundedCornerShape(9.dp)),
                 contentScale = ContentScale.Crop
             )
@@ -56,7 +53,7 @@ fun StandardNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
             Column(Modifier.weight(1f),
                 verticalArrangement = Arrangement.Top) {
                 Text(
-                    nasaTrenutnaVijest.title, overflow = TextOverflow.Ellipsis,maxLines = 2,
+                    newsItem.title, overflow = TextOverflow.Ellipsis,maxLines = 2,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontFamily = FontFamily.SansSerif	,
                         fontWeight = FontWeight.Bold,
@@ -65,7 +62,7 @@ fun StandardNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
                     modifier = Modifier.padding(top = 0.dp)
                 )
                 Spacer(Modifier.height(3.dp))
-                Text( nasaTrenutnaVijest.snippet,
+                Text( newsItem.snippet,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontFamily = FontFamily.SansSerif,
@@ -73,7 +70,7 @@ fun StandardNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
                     ), maxLines = 2,
                 )
                 Spacer( Modifier.height(4.dp))
-                Text( "${nasaTrenutnaVijest.source} • ${nasaTrenutnaVijest.publishedDate}",
+                Text( "${newsItem.source} • ${newsItem.publishedDate}",
                     style= MaterialTheme.typography.bodyMedium.copy(
                         fontFamily = FontFamily.SansSerif,
                         fontSize = 11.5.sp,

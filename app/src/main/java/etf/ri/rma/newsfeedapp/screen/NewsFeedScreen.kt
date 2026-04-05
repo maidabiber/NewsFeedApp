@@ -45,41 +45,41 @@ import etf.ri.rma.newsfeedapp.model.NewsItem
 @Composable
 fun NewsFeedScreen(
     navController: NavController = rememberNavController(),
-    kategorijaKojuSmoIzabrali: String = "Sve",
-    opsegDatuma: Pair<String, String>? = null,
+    selectedCategory: String = "Sve",
+    dateRange: Pair<String, String>? = null,
     onCategoryChanged: (String) -> Unit = {},
-    listaNezeljenihRijeci: List<String> = emptyList(),
+    unwantedWords: List<String> = emptyList(),
     newsDao: NewsDAO,
     savedNewsRepository: SavedNewsRepository
 ) {
-    val pozadinskaBoja = Color(0xFFD3D3D3)
+    val backgroundColor = Color(0xFFD3D3D3)
     val dateFormatter = remember {
         SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }
     }
-    var greska by remember { mutableStateOf<String?>(null) }
-    var vijestiKojeSuPrikazane by remember { mutableStateOf(emptyList<NewsItem>()) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var displayedNews by remember { mutableStateOf(emptyList<NewsItem>()) }
     var loading by remember { mutableStateOf(true) }
 
-    val stanjeTrenutno = rememberLazyListState()
+    val currState = rememberLazyListState()
 
-    LaunchedEffect(kategorijaKojuSmoIzabrali, opsegDatuma, listaNezeljenihRijeci) {
+    LaunchedEffect(selectedCategory, dateRange, unwantedWords) {
         loading = true
-        greska = null
+        errorMessage = null
 
         try {
-            newsDao.popuniSaPocetnimVijestima()
+            newsDao.populateWithInitialNews()
 
-            if (kategorijaKojuSmoIzabrali != "Sve") {
-                val noveVijesti = newsDao.getTopStoriesByCategory(kategorijaKojuSmoIzabrali, true)
-                for (vijest in noveVijesti) {
-                    savedNewsRepository.sacuvajVijest(vijest)
-                    vijest.imageUrl?.let { url ->
+            if (selectedCategory != "Sve") {
+                val newStories = newsDao.getTopStoriesByCategory(selectedCategory, true)
+                for (story in newStories) {
+                    savedNewsRepository.saveNews(story)
+                    story.imageUrl?.let { url ->
                         try {
-                            val tagovi = ImagaDAO().getTags(url)
-                            val id = savedNewsRepository.dohvatiIdVijestiPoUuid(vijest.uuid)
-                           if (id!=null) savedNewsRepository.dodajTagoveZaVijest(tagovi, id)
+                            val tags = ImagaDAO().getTags(url)
+                            val id = savedNewsRepository.getNewsIdByUuid(story.uuid)
+                           if (id!=null) savedNewsRepository.addTagsToNews(tags, id)
                         } catch (_: Exception) { }
                     }
                 }
@@ -87,40 +87,40 @@ fun NewsFeedScreen(
 
 
 
-            val sveVijestiIzKesa = savedNewsRepository.sveVijesti()
+            val allCashedNews = savedNewsRepository.getAllNews()
 
-            val filtriraneVijesti = sveVijestiIzKesa.filter { newsItem ->
-                val odgovarajucaKat = if (kategorijaKojuSmoIzabrali == "Sve") {
+            val filteredNews = allCashedNews.filter { newsItem ->
+                val isCorrectCategory = if (selectedCategory == "Sve") {
                     true
                 } else {
-                    val targetNewsItemApiCategory = newsDao.getNewsItemApiCategory(kategorijaKojuSmoIzabrali)
+                    val targetNewsItemApiCategory = newsDao.getNewsItemApiCategory(selectedCategory)
                     newsItem.category.equals(targetNewsItemApiCategory, ignoreCase = true)
                 }
 
-                val matchesDateRange = if (opsegDatuma != null) {
-                    val (startDateStr, endDateStr) = opsegDatuma
+                val matchesDateRange = if (dateRange != null) {
+                    val (startDateStr, endDateStr) = dateRange
                     try {
-                        val datumVijesti = dateFormatter.parse(newsItem.publishedDate)
-                        val pocetniDatum = dateFormatter.parse(startDateStr)
-                        val krajnjiDatum = dateFormatter.parse(endDateStr)
+                        val newsDate = dateFormatter.parse(newsItem.publishedDate)
+                        val startDate = dateFormatter.parse(startDateStr)
+                        val endDate = dateFormatter.parse(endDateStr)
 
-                        datumVijesti != null && !datumVijesti.before(pocetniDatum) && !datumVijesti.after(krajnjiDatum)
+                        newsDate != null && !newsDate.before(startDate) && !newsDate.after(endDate)
                     } catch (e: Exception) {
                         false
                     }
                 } else true
 
-                val matchesUnwantedWords = if (listaNezeljenihRijeci.isNotEmpty()) {
+                val matchesUnwantedWords = if (unwantedWords.isNotEmpty()) {
                     val combinedText = "${newsItem.title.orEmpty()} ${newsItem.snippet.orEmpty()}".lowercase(Locale.ROOT)
-                    listaNezeljenihRijeci.none { unwantedWord ->
+                    unwantedWords.none { unwantedWord ->
                         combinedText.contains(unwantedWord.lowercase(Locale.ROOT))
                     }
                 } else true
 
-                odgovarajucaKat && matchesDateRange && matchesUnwantedWords
+                isCorrectCategory && matchesDateRange && matchesUnwantedWords
             }
 
-            val sortiraneVijesti = filtriraneVijesti.sortedWith { a, b ->
+            val sortedNews = filteredNews.sortedWith { a, b ->
                 val aIsFeatured = a.isFeatured
                 val bIsFeatured = b.isFeatured
 
@@ -129,9 +129,9 @@ fun NewsFeedScreen(
                     !aIsFeatured && bIsFeatured -> 1
                     else -> {
                         try {
-                            val datumA = dateFormatter.parse(a.publishedDate) ?: Date(0)
-                            val datumB = dateFormatter.parse(b.publishedDate) ?: Date(0)
-                            datumB.compareTo(datumA)
+                            val dateA = dateFormatter.parse(a.publishedDate) ?: Date(0)
+                            val dateB = dateFormatter.parse(b.publishedDate) ?: Date(0)
+                            dateB.compareTo(dateA)
                         } catch (GRESKA: Exception) {
                             0
                         }
@@ -139,11 +139,11 @@ fun NewsFeedScreen(
                 }
             }
 
-            vijestiKojeSuPrikazane = sortiraneVijesti
+            displayedNews = sortedNews
 
         } catch (e: Exception) {
-            greska = "Došlo je do greške pri učitavanju vijesti: ${e.localizedMessage ?: "Nepoznata greška"}"
-            vijestiKojeSuPrikazane = emptyList()
+            errorMessage = "Došlo je do greške pri učitavanju vijesti: ${e.localizedMessage ?: "Nepoznata greška"}"
+            displayedNews = emptyList()
         } finally {
             loading = false
         }
@@ -159,18 +159,18 @@ fun NewsFeedScreen(
         Pair("Više filtera ...", "filter_chip_more")
     )
 
-    val trenutnoAktivna = remember(kategorijaKojuSmoIzabrali) {
-        dugmici.indexOfFirst { it.first.equals(kategorijaKojuSmoIzabrali, ignoreCase = true) }
+    val currentActiveIndex = remember(selectedCategory) {
+        dugmici.indexOfFirst { it.first.equals(selectedCategory, ignoreCase = true) }
             .coerceAtLeast(0)
     }
 
     Scaffold(
-        containerColor = pozadinskaBoja,
+        containerColor = backgroundColor,
         topBar = {
             TopAppBar(title = { Text("Vijesti", fontWeight = FontWeight.Bold) },
-                modifier = Modifier.background(pozadinskaBoja).statusBarsPadding(),
+                modifier = Modifier.background(backgroundColor).statusBarsPadding(),
                 colors = TopAppBarDefaults.mediumTopAppBarColors(
-                    containerColor = pozadinskaBoja
+                    containerColor = backgroundColor
                 )
             )
         },
@@ -182,7 +182,7 @@ fun NewsFeedScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 dugmici.forEachIndexed { indeks, (naziv, tag) ->
-                    val vrijednost = trenutnoAktivna == indeks
+                    val vrijednost = currentActiveIndex == indeks
                     FilterChip(
                         colors = FilterChipDefaults.filterChipColors(
                             selectedLabelColor = Color.White,
@@ -214,14 +214,14 @@ fun NewsFeedScreen(
                     )
                     Text("Učitavanje...", modifier = Modifier.padding(10.dp))
                 }
-                greska != null -> {
-                    Text("Error: $greska", color = Color.Red, modifier = Modifier.padding(16.dp))
+                errorMessage != null -> {
+                    Text("Error: $errorMessage", color = Color.Red, modifier = Modifier.padding(16.dp))
                 }
-                vijestiKojeSuPrikazane.isEmpty() -> {
+                displayedNews.isEmpty() -> {
                     Text("Nema dostupnih vijesti.", modifier = Modifier.padding(16.dp))
                 }
                 else -> {
-                    NewsList(vijestiKojeSuPrikazane, stanjeTrenutno, navController, kategorijaKojuSmoIzabrali)
+                    NewsList(displayedNews, currState, navController, selectedCategory)
                 }
             }
         }

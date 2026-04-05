@@ -30,7 +30,7 @@ import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String, String>?, onCategoryChanged: (String) -> Unit, onDateRangeChanged: (Pair<String, String>?) -> Unit, nezeljeneRijeci: List<String>, onUnwantedWordsChanged: (List<String>) -> Unit, kategorijaKojuSmoIzabrali: String) {
+fun FilterScreen(navController: NavController, selectedDateRange: Pair<String, String>?, onCategoryChanged: (String) -> Unit, onDateRangeChanged: (Pair<String, String>?) -> Unit, unwantedWords: List<String>, onUnwantedWordsChanged: (List<String>) -> Unit, selectedCategory: String) {
 
 
 
@@ -42,46 +42,46 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
         Pair("Nauka", "filter_chip_sci"),
         Pair("Tehnologija", "filter_chip_tech")
     )
-    var kategorijaKojaJeTrenutnoAktivna by rememberSaveable { mutableStateOf(dugmici.indexOfFirst { it.first == kategorijaKojuSmoIzabrali }.coerceAtLeast(0)) }
+    var currentCategoryIndex by rememberSaveable { mutableStateOf(dugmici.indexOfFirst { it.first == selectedCategory }.coerceAtLeast(0)) }
 
 
-    var unesenaNepozeljnaRijec by rememberSaveable { mutableStateOf("") }
-    var pocetakOdabranogDatuma by remember { mutableStateOf<Long?>(null) }
-    var krajOdabranogDatuma by remember { mutableStateOf<Long?>(null) }
+    var inputUnwantedWord by rememberSaveable { mutableStateOf("") }
+    var selectedStartDate by remember { mutableStateOf<Long?>(null) }
+    var selectedEndDate by remember { mutableStateOf<Long?>(null) }
 
-    val stanjeNezeljenihRijeci = remember { mutableStateListOf<String>().apply { addAll(nezeljeneRijeci) } }
-    val formatDatumaZaPrikaz = remember {
+    val unwantedWordsState = remember { mutableStateListOf<String>().apply { addAll(unwantedWords) } }
+    val displayDateFormat = remember {
         val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
         sdf.timeZone = TimeZone.getTimeZone("UTC")
         sdf
     }
 
-    var prikaziOdabirDatuma by remember { mutableStateOf(false) }
-    val stanjeOdabiraDatuma = rememberDateRangePickerState()
+    var showDatePicker by remember { mutableStateOf(false) }
+    val dateRangePickerState = rememberDateRangePickerState()
 
-    LaunchedEffect(odabraniOpsegDatuma) {
-        if (odabraniOpsegDatuma != null) {
-            val pocetak = formatDatumaZaPrikaz.parse(odabraniOpsegDatuma.first)?.time
-            val kraj = formatDatumaZaPrikaz.parse(odabraniOpsegDatuma.second)?.time
-            if (kraj != null && pocetak != null ) {
-                stanjeOdabiraDatuma.setSelection(pocetak, kraj)
+    LaunchedEffect(selectedDateRange) {
+        if (selectedDateRange != null) {
+            val start = displayDateFormat.parse(selectedDateRange.first)?.time
+            val end = displayDateFormat.parse(selectedDateRange.second)?.time
+            if (end != null && start != null ) {
+                dateRangePickerState.setSelection(start, end)
             }
         }
     }
 
-    val dateRangeText = remember(stanjeOdabiraDatuma.selectedStartDateMillis, stanjeOdabiraDatuma.selectedEndDateMillis) {
-        if (stanjeOdabiraDatuma.selectedStartDateMillis != null && stanjeOdabiraDatuma.selectedEndDateMillis != null) {
-            formatDatumaZaPrikaz.format(Date(stanjeOdabiraDatuma.selectedStartDateMillis!!)) to formatDatumaZaPrikaz.format(Date(stanjeOdabiraDatuma.selectedEndDateMillis!!))
+    val dateRangeText = remember(dateRangePickerState.selectedStartDateMillis, dateRangePickerState.selectedEndDateMillis) {
+        if (dateRangePickerState.selectedStartDateMillis != null && dateRangePickerState.selectedEndDateMillis != null) {
+            displayDateFormat.format(Date(dateRangePickerState.selectedStartDateMillis!!)) to displayDateFormat.format(Date(dateRangePickerState.selectedEndDateMillis!!))
         } else {
             null }
     }
 
 
-    val odabranaKategorijaRezultat = dugmici.getOrNull(kategorijaKojaJeTrenutnoAktivna)?.first ?: "Sve"
-    val rezultatRasponaDatuma = dateRangeText
-    val finalnaListaNezeljenihRijeci = stanjeNezeljenihRijeci.toList()
+    val categoryResult = dugmici.getOrNull(currentCategoryIndex)?.first ?: "Sve"
+    val dateRangeResult = dateRangeText
+    val finalUnwantedWordsList = unwantedWordsState.toList()
 
-    val kontekst = LocalContext.current
+    val context = LocalContext.current
     Column(modifier = Modifier.padding(20.dp).fillMaxSize()
     ) {
         Spacer(modifier = Modifier.height(15.dp))
@@ -90,11 +90,11 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
 
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             dugmici.forEachIndexed { index, (name, tag) ->
-                val vrijednost = kategorijaKojaJeTrenutnoAktivna == index
+
                 FilterChip(
 
-                    selected = kategorijaKojaJeTrenutnoAktivna == index,
-                    onClick = { kategorijaKojaJeTrenutnoAktivna = index },
+                    selected = currentCategoryIndex == index,
+                    onClick = { currentCategoryIndex = index },
                     label = { Text(name) },
                     modifier = Modifier.testTag(tag),
                     colors = FilterChipDefaults.filterChipColors(
@@ -129,7 +129,7 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
             }
             Spacer(modifier = Modifier.width(16.dp))
             Button(
-                onClick = { prikaziOdabirDatuma = true },
+                onClick = { showDatePicker = true },
                 modifier = Modifier.testTag("filter_daterange_button"),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(70, 70, 150),
@@ -150,8 +150,8 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
             TextField(
 
 
-                value = unesenaNepozeljnaRijec,
-                onValueChange = { unesenaNepozeljnaRijec = it },
+                value = inputUnwantedWord,
+                onValueChange = { inputUnwantedWord = it },
                 modifier = Modifier.width(226.dp).testTag("filter_unwanted_input") .shadow(4.dp, shape = RoundedCornerShape(8.dp)).background(ljubicasta, shape = RoundedCornerShape(8.dp)),
                 placeholder = {
                     Text(text="Unesite riječ", color = Color.DarkGray)
@@ -166,11 +166,11 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
             Spacer(modifier = Modifier.width(34.dp))
             Button(
                 onClick = {
-                    val rijec = unesenaNepozeljnaRijec.trim()
+                    val rijec = inputUnwantedWord.trim()
 
                     val poruka = if (rijec.isEmpty()) {
                         "Unesite riječ!"
-                    } else if (stanjeNezeljenihRijeci.any { it.equals(rijec, ignoreCase = true) }) {
+                    } else if (unwantedWordsState.any { it.equals(rijec, ignoreCase = true) }) {
                         "Nije moguće unijeti istu riječ više puta!"
                     } else {
                         null
@@ -178,10 +178,10 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
 
 
                     if (poruka != null) {
-                        Toast.makeText(kontekst, poruka, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, poruka, Toast.LENGTH_SHORT).show()
                     } else {
-                        stanjeNezeljenihRijeci.add(rijec)
-                        unesenaNepozeljnaRijec = ""
+                        unwantedWordsState.add(rijec)
+                        inputUnwantedWord = ""
                     }
                 },   colors = ButtonDefaults.buttonColors(
                     containerColor = Color(70, 70, 150),
@@ -200,7 +200,7 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
         Column(modifier = Modifier.testTag("filter_unwanted_list")
             .verticalScroll(rememberScrollState())
         ) {
-            stanjeNezeljenihRijeci.forEach { rijec ->
+            unwantedWordsState.forEach { rijec ->
                 Text(text = rijec)
             }
         }
@@ -208,9 +208,9 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
 
         Button(
             onClick = {
-                onCategoryChanged(odabranaKategorijaRezultat)
-                onDateRangeChanged(rezultatRasponaDatuma)
-                onUnwantedWordsChanged(finalnaListaNezeljenihRijeci)
+                onCategoryChanged(categoryResult)
+                onDateRangeChanged(dateRangeResult)
+                onUnwantedWordsChanged(finalUnwantedWordsList)
 
                 navController.popBackStack()
             },
@@ -222,27 +222,27 @@ fun FilterScreen(navController: NavController, odabraniOpsegDatuma: Pair<String,
         ) {
             Text("Primijeni filtere")
         }
-        val pocetak = stanjeOdabiraDatuma.selectedStartDateMillis
-        val kraj = stanjeOdabiraDatuma.selectedEndDateMillis
-        if (prikaziOdabirDatuma) {
-            AlertDialog(onDismissRequest = { prikaziOdabirDatuma = false },
+        val pocetak = dateRangePickerState.selectedStartDateMillis
+        val kraj = dateRangePickerState.selectedEndDateMillis
+        if (showDatePicker) {
+            AlertDialog(onDismissRequest = { showDatePicker = false },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             if (pocetak != null && kraj != null) {
-                                pocetakOdabranogDatuma = pocetak
-                                krajOdabranogDatuma = kraj
-                                prikaziOdabirDatuma = false
+                                selectedStartDate = pocetak
+                                selectedEndDate = kraj
+                                showDatePicker = false
                             }
                         }
                     ) {
                         Text("Potvrdi opseg datuma")
                     }
                 },
-                dismissButton = { TextButton(onClick = { prikaziOdabirDatuma = false }) {
+                dismissButton = { TextButton(onClick = { showDatePicker = false }) {
                     Text("Odustani") }
                 },
-                text = { DateRangePicker(state = stanjeOdabiraDatuma) }
+                text = { DateRangePicker(state = dateRangePickerState) }
             )
         }
     }

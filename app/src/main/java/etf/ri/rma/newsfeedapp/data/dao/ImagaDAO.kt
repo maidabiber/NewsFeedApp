@@ -13,15 +13,27 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
-
 class ImagaDAO {
 
     companion object {
-        private const val apiKey    = "acc_d64f6eccf9a1409"
-        private const val apiSecret = "84d74f3d2b28f0b1674041129c663113"
+
+        private val properties = java.util.Properties().apply {
+            try {
+
+                val file = java.io.File("local.properties")
+                if (file.exists()) {
+                    java.io.FileInputStream(file).use { load(it) }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        private val apiKey    = properties.getProperty("IMAGGA_KEY") ?: ""
+        private val apiSecret = properties.getProperty("IMAGGA_SECRET") ?: ""
         private const val baseUrl   = "https://api.imagga.com/"
-        private lateinit var apiServis: ImagaApiService
-        private val kesTagova   = ConcurrentHashMap<String, ArrayList<String>>()
+        private lateinit var apiService: ImagaApiService
+        private val tagsCache   = ConcurrentHashMap<String, ArrayList<String>>()
 
         private val credentials = Base64.encodeToString("$apiKey:$apiSecret".toByteArray(), Base64.NO_WRAP)
         private val cacheMutex  = Mutex()
@@ -30,23 +42,23 @@ class ImagaDAO {
 
 
     constructor() {
-        val httpKlijent = OkHttpClient.Builder().addInterceptor { ch ->
-            val zahtjevZaSliku = ch.request().newBuilder().header("Authorization", "Basic $credentials").build()
-            ch.proceed(zahtjevZaSliku)
+        val httpClient = OkHttpClient.Builder().addInterceptor { ch ->
+            val imageRequest = ch.request().newBuilder().header("Authorization", "Basic $credentials").build()
+            ch.proceed(imageRequest)
         }.build()
 
-        val instancaRetrofitKlijent = Retrofit.Builder().baseUrl(baseUrl).client(httpKlijent).addConverterFactory(
+        val retrofitInstance = Retrofit.Builder().baseUrl(baseUrl).client(httpClient).addConverterFactory(
             GsonConverterFactory.create()).build()
 
-        apiServis = instancaRetrofitKlijent.create(ImagaApiService::class.java)
+        apiService = retrofitInstance.create(ImagaApiService::class.java)
     }
 
-    fun postaviApiServis(service: ImagaApiService) { apiServis = service }
+    fun setApiService(service: ImagaApiService) { apiService = service }
 
 
 
     suspend fun getTags(imageUrl: String): ArrayList<String> = cacheMutex.withLock {
-        kesTagova[imageUrl]?.let {
+        tagsCache[imageUrl]?.let {
              return it
         }
 
@@ -56,24 +68,24 @@ class ImagaDAO {
              throw InvalidImageURLException("URL slike nije ispravan: $imageUrl")
         }
 
-        val listaTagova = withContext(Dispatchers.IO) {
+        val tagList = withContext(Dispatchers.IO) {
             try {
 
-                val odgovorApi = apiServis.getTags(imageUrl)
+                val apiResponse = apiService.getTags(imageUrl)
 
-                val dohvaceniTagovi =
-                    odgovorApi.result.tags.map { it.tag.en }.toCollection(ArrayList())
-                dohvaceniTagovi
+                val fetchedTags =
+                    apiResponse.result.tags.map { it.tag.en }.toCollection(ArrayList())
+                fetchedTags
             } catch (greska: HttpException) {
                 val errorBody = greska.response()?.errorBody()?.string()
                 if (greska.code() == 403 || greska.code() == 401) {
                 }
-                throw InvalidImageURLException("greska pri dohvatanju tagova: ${greska.message}. HTTP kod: ${greska.code()}. Odgovor: $errorBody")
+                throw InvalidImageURLException("Greska pri dohvatanju tagova: ${greska.message}. HTTP kod: ${greska.code()}. Odgovor: $errorBody")
             } catch (e: Exception) {
-                throw InvalidImageURLException("greska pri dohvatanju tagova: ${e.message}. Provjerite API URL i ključeve.")
+                throw InvalidImageURLException("Greska pri dohvatanju tagova: ${e.message}. Provjerite API URL i kljuceve.")
             }
         }
-        kesTagova[imageUrl] = listaTagova
-        listaTagova
+        tagsCache[imageUrl] = tagList
+        tagList
     }
 }

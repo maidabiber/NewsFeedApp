@@ -21,9 +21,7 @@ data class NewsApiArticle(
     val isFeatured: Boolean,
     val source: String,
     @SerializedName("published_at")
-    val publishedAt: String // <--- Ostavite samo publishedAt (String)
-    // UKLONITE: val publishedDate: Date, // <-- OVO JE BILO VIŠAK I UZROKOVALO GREŠKU
-    // UKLONITE: val similar: List<SimilarNewsApiArticle>? = null // Test ne koristi ovo, ali za aplikaciju ga možete ostaviti
+    val publishedAt: String
 ) {
     fun toNewsItem(): NewsItem {
         val kategorija = categories.firstOrNull() ?: "General"
@@ -57,16 +55,3 @@ data class NewsApiArticle(
 
 }
 
-// Ako vam ne treba u aplikaciji za API pozive, možete je i ukloniti
-// Ali za sada je ostavljamo jer ne smeta build-u.
-data class SimilarNewsApiArticle(
-    val uuid: String,
-    val title: String,
-    val snippet: String,
-    @SerializedName("image_url")
-    val imageUrl: String?,
-    val categories: List<String>,
-    val source: String,
-    @SerializedName("published_at")
-    val publishedAt: String
-)

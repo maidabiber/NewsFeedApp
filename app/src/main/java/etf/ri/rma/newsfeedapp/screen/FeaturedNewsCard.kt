@@ -2,25 +2,19 @@ package etf.ri.rma.newsfeedapp.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
@@ -32,23 +26,23 @@ import coil.compose.rememberAsyncImagePainter // Import za Coil
 import etf.ri.rma.newsfeedapp.model.NewsItem
 
 @Composable
-fun FeaturedNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
-    val bojaPozadine = Color(0xFFE6E6FA)
+fun FeaturedNewsCard(newsItem: NewsItem, onClick: (String) -> Unit) {
+    val backgroundColor = Color(0xFFE6E6FA)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { onClick(nasaTrenutnaVijest.uuid) },
+            .clickable { onClick(newsItem.uuid) },
         shape = RoundedCornerShape(9.dp),
         elevation = CardDefaults.cardElevation(5.dp),
         colors = CardDefaults.cardColors(
-            containerColor = bojaPozadine)
+            containerColor = backgroundColor)
     ) {
         Column(Modifier.padding(9.dp)) {
             Image(
-                painter = rememberAsyncImagePainter(nasaTrenutnaVijest.imageUrl),
-                contentDescription = nasaTrenutnaVijest.title,
+                painter = rememberAsyncImagePainter(newsItem.imageUrl),
+                contentDescription = newsItem.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -56,7 +50,7 @@ fun FeaturedNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                nasaTrenutnaVijest.title,
+                newsItem.title,
                 maxLines = 2,
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = FontFamily.SansSerif,
@@ -68,7 +62,7 @@ fun FeaturedNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
             Spacer(Modifier.height(3.dp))
             Text(
                 maxLines = 2,
-                text = nasaTrenutnaVijest.snippet,
+                text = newsItem.snippet,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.SansSerif,
                     fontSize = 15.5.sp,
@@ -77,7 +71,7 @@ fun FeaturedNewsCard(nasaTrenutnaVijest: NewsItem, onClick: (String) -> Unit) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "${nasaTrenutnaVijest.source} • ${nasaTrenutnaVijest.publishedDate}",
+                text = "${newsItem.source} • ${newsItem.publishedDate}",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.SansSerif,
                     fontSize = 11.5.sp,

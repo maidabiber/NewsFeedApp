@@ -1,3 +1,12 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val localProperties = Properties()
+val localPropertiesFile = project.rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -9,6 +18,7 @@ android {
     namespace = "etf.ri.rma.newsfeedapp"
     compileSdk = 35
 
+
     defaultConfig {
         applicationId = "etf.ri.rma.newsfeedapp"
         minSdk = 31
@@ -17,6 +27,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "IMAGGA_KEY", "\"${localProperties.getProperty("IMAGGA_KEY") ?: ""}\"")
+        buildConfigField("String", "IMAGGA_SECRET", "\"${localProperties.getProperty("IMAGGA_SECRET") ?: ""}\"")
+        buildConfigField("String", "NEWS_API_KEY", "\"${localProperties.getProperty("NEWS_API_KEY") ?: ""}\"")
     }
 
     buildTypes {
@@ -41,7 +54,11 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig=true
+
+
     }
+
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.11"
@@ -120,10 +137,9 @@ dependencies {
     androidTestImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.0")
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.02.01"))
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.01")) // <--- OVO DODANO
-
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.01"))
 // Compose UI
     implementation("androidx.compose.ui:ui")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4") // <--- Bez verzije, jer BOM to pokriva
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
 }

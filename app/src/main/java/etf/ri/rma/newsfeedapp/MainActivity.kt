@@ -35,9 +35,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             NewsFeedAppTheme {
-                var nepozeljneRijeci by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
-                var izabraniOpsegDatuma by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
-                var odabranaKategorija by rememberSaveable { mutableStateOf("Sve") }
+                var unwantedWords by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
+                var selectedDateRange by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
+                var selectedCategory by rememberSaveable { mutableStateOf("Sve") }
 
                val sharedNewsDao = remember { NewsDAO() }
                 val database = NewsDatabase.getInstance(applicationContext)
@@ -50,12 +50,12 @@ class MainActivity : ComponentActivity() {
 
                     NavGraph(
                         navController = navController,
-                        odabranaKategorija = odabranaKategorija,
-                        nepozeljneRijeci = nepozeljneRijeci,
-                        onCategoryChanged = { odabranaKategorija = it },
-                        onDateRangeChanged = { izabraniOpsegDatuma = it },
-                        rasponDatuma = izabraniOpsegDatuma,
-                        onUnwantedWordsChanged = { nepozeljneRijeci = it },
+                        selectedCategory = selectedCategory,
+                        unwantedWords = unwantedWords,
+                        onCategoryChanged = { selectedCategory = it },
+                        onDateRangeChanged = { selectedDateRange = it },
+                        dateRange = selectedDateRange,
+                        onUnwantedWordsChanged = { unwantedWords = it },
                         newsDao = sharedNewsDao,
                         savedNewsRepository = savedNewsRepository
                     )
@@ -71,11 +71,11 @@ class MainActivity : ComponentActivity() {
 fun NavGraph(
     navController: NavHostController,
     onDateRangeChanged: (Pair<String, String>?) -> Unit,
-    odabranaKategorija: String,
-    rasponDatuma: Pair<String, String>?,
+    selectedCategory: String,
+    dateRange: Pair<String, String>?,
     onCategoryChanged: (String) -> Unit,
     onUnwantedWordsChanged: (List<String>) -> Unit,
-    nepozeljneRijeci: List<String>,
+    unwantedWords: List<String>,
     newsDao: NewsDAO,
     savedNewsRepository: SavedNewsRepository
 ) {
@@ -84,9 +84,9 @@ fun NavGraph(
         composable("/home") {
             NewsFeedScreen(
                 navController = navController,
-                opsegDatuma = rasponDatuma,
-                kategorijaKojuSmoIzabrali = odabranaKategorija,
-                listaNezeljenihRijeci = nepozeljneRijeci,
+                dateRange = dateRange,
+                selectedCategory = selectedCategory,
+                unwantedWords = unwantedWords,
                 onCategoryChanged = onCategoryChanged,
                 newsDao = newsDao,
                 savedNewsRepository = savedNewsRepository
@@ -94,9 +94,9 @@ fun NavGraph(
         }
         composable("/filters") {
             FilterScreen(
-                navController = navController, odabraniOpsegDatuma = rasponDatuma,onDateRangeChanged = onDateRangeChanged,
-                nezeljeneRijeci = nepozeljneRijeci,
-                kategorijaKojuSmoIzabrali = odabranaKategorija,
+                navController = navController, selectedDateRange = dateRange,onDateRangeChanged = onDateRangeChanged,
+                unwantedWords = unwantedWords,
+                selectedCategory = selectedCategory,
                 onCategoryChanged = onCategoryChanged,
                 onUnwantedWordsChanged = onUnwantedWordsChanged
             )

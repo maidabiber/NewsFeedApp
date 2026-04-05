@@ -55,17 +55,15 @@ import android.content.Context
 import android.net.ConnectivityManager
 import androidx.annotation.RequiresPermission
 
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import etf.ri.rma.newsfeedapp.R
 import etf.ri.rma.newsfeedapp.data.dao.SavedNewsRepository
-import kotlinx.coroutines.launch
 
 @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
-fun imaLiInterneta(context: Context): Boolean {
+fun isNetworkAvailable(context: Context): Boolean {
     val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     val network = connectivityManager.activeNetwork ?: return false
@@ -82,33 +80,32 @@ fun NewsDetailsScreen(
     newsDao: NewsDAO,
     savedNewsRepository: SavedNewsRepository
 ) {
-    var odabranaVijest by remember { mutableStateOf<NewsItem?>(null) }
+    var selectedNews by remember { mutableStateOf<NewsItem?>(null) }
     val imgDao = remember { ImagaDAO() }
-    var jeLiVijestSacuvana by remember { mutableStateOf(false) }
-    var porukaGreske by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-    var ucitavanjeDetaljaUToku by remember { mutableStateOf(true) }
-    var tagoviSlikeIzApi by remember { mutableStateOf<List<String>>(emptyList()) }
-    var tagoviVijestiIzBaze by remember { mutableStateOf<List<String>>(emptyList()) }
-    var vijestiKojeSuSlicne by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
+    var isNewsSaved by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var isDetailsLoading by remember { mutableStateOf(true) }
+    var apiImageTags by remember { mutableStateOf<List<String>>(emptyList()) }
+    var cachedNewsTags by remember { mutableStateOf<List<String>>(emptyList()) }
+    var similarNewsList by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     val context = LocalContext.current
     var online by remember { mutableStateOf(false) }
-    var tagoviZaPrikaz by remember { mutableStateOf<List<String>>(emptyList()) }
-    var tagoviApi by remember { mutableStateOf<List<String>>(emptyList()) }
+    var displayTags by remember { mutableStateOf<List<String>>(emptyList()) }
 
     LaunchedEffect(newsId) {
-        ucitavanjeDetaljaUToku = true
-        porukaGreske = null
-        online = imaLiInterneta(context)
+        isDetailsLoading = true
+        errorMessage = null
+        online = isNetworkAvailable(context)
 
-        var idVijestiIzBaze: Int? = null
+        var newsIdFromDb: Int? = null
 
         try {
-            idVijestiIzBaze = savedNewsRepository.dohvatiIdVijestiPoUuid(newsId)
-            if (idVijestiIzBaze != null) {
-                val vijestSaTagovima = savedNewsRepository.dohvatiVijestSaTagovima(idVijestiIzBaze)
-                vijestSaTagovima?.let {
-                    odabranaVijest = NewsItem(
+            newsIdFromDb = savedNewsRepository.getNewsIdByUuid(newsId)
+            if (newsIdFromDb != null) {
+                val newsWithTags = savedNewsRepository.getNewsWithTag(newsIdFromDb)
+                newsWithTags?.let {
+                    selectedNews = NewsItem(
                         id = it.news.id,
                         snippet = it.news.snippet,
                         title = it.news.title,
@@ -120,61 +117,61 @@ fun NewsDetailsScreen(
                         publishedDate = it.news.publishedDate,
                         imageTags = it.tags
                     )
-                    tagoviVijestiIzBaze = it.tags.map { it.value }
-                    tagoviZaPrikaz = tagoviVijestiIzBaze
-                    jeLiVijestSacuvana = true
+                    cachedNewsTags = it.tags.map { it.value }
+                    displayTags = cachedNewsTags
+                    isNewsSaved = true
                 }
             }
         } catch (e: Exception) {
-            porukaGreske = "Greška pri dohvatanju iz baze: ${e.message}"
+            errorMessage = "Greška pri dohvatanju iz baze: ${e.message}"
         }
 
-        if (odabranaVijest == null) {
+        if (selectedNews == null) {
             try {
                 val vijest = newsDao.getNewsItem(newsId)
-                odabranaVijest = vijest
-                jeLiVijestSacuvana = false
+                selectedNews = vijest
+                isNewsSaved = false
             } catch (e: Exception) {
-                porukaGreske = "Greška pri dohvatanju vijesti s weba: ${e.message}"
+                errorMessage = "Greška pri dohvatanju vijesti s weba: ${e.message}"
             }
         }
 
-        odabranaVijest?.let { vijest ->
+        selectedNews?.let { vijest ->
             if (!vijest.imageUrl.isNullOrBlank()) {
-                if (tagoviVijestiIzBaze.isNotEmpty()) {
-                    tagoviZaPrikaz = tagoviVijestiIzBaze
+                if (cachedNewsTags.isNotEmpty()) {
+                    displayTags = cachedNewsTags
                 } else if (online) {
                     try {
-                        val tagovi = imgDao.getTags(vijest.imageUrl)
-                        tagoviZaPrikaz = tagovi
-                        tagoviSlikeIzApi = tagovi
-                        val sacuvano = savedNewsRepository.sacuvajVijest(vijest)
-                        if (sacuvano) {
-                            val id = savedNewsRepository.dohvatiIdVijestiPoUuid(vijest.uuid)
+                        val tags = imgDao.getTags(vijest.imageUrl)
+                        displayTags = tags
+                        apiImageTags = tags
+                        val isSaved = savedNewsRepository.saveNews(vijest)
+                        if (isSaved) {
+                            val id = savedNewsRepository.getNewsIdByUuid(vijest.uuid)
                             if (id != null) {
-                                savedNewsRepository.dodajTagoveZaVijest(tagovi, id)
+                                savedNewsRepository.addTagsToNews(tags, id)
                             }
                         }
                     } catch (e: Exception) {
-                        porukaGreske = "Greška pri dohvatanju tagova s API-ja: ${e.message}"
+                        errorMessage = "Greška pri dohvatanju tagova s API-ja: ${e.message}"
                     }
                 } else {
-                    porukaGreske = "Nema interneta i tagovi nisu dostupni u bazi."
+                    errorMessage = "Nema interneta i tagovi nisu dostupni u bazi."
                 }
             }
         }
 
-        odabranaVijest?.let { trenutnaVijest ->
-            vijestiKojeSuSlicne = if (online) {
-                newsDao.getSimilarStories(trenutnaVijest.uuid).filter { it.uuid != trenutnaVijest.uuid }
-            } else if (tagoviZaPrikaz.isNotEmpty()) {
-                savedNewsRepository.dohvatiSlicneVijesti(tagoviZaPrikaz.take(2)).filter { it.uuid != trenutnaVijest.uuid }
+        selectedNews?.let { currentNews ->
+            similarNewsList = if (online) {
+                newsDao.getSimilarStories(currentNews.uuid).filter { it.uuid != currentNews.uuid }
+            } else if (displayTags.isNotEmpty()) {
+                savedNewsRepository.getSimilarNews(displayTags.take(2)).filter { it.uuid != currentNews.uuid }
             } else {
                 emptyList()
             }
         }
 
-        ucitavanjeDetaljaUToku = false
+        isDetailsLoading = false
     }
     val pozadinskaBoja = Color(0xFFD3D3D3)
     val plavaKartica = Color(0xFFE6E6FA)
@@ -220,7 +217,7 @@ fun NewsDetailsScreen(
             }
         }
     ) { paddingValues ->
-        if (ucitavanjeDetaljaUToku && odabranaVijest == null) {
+        if (isDetailsLoading && selectedNews == null) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
                 verticalArrangement = Arrangement.Center,
@@ -228,14 +225,14 @@ fun NewsDetailsScreen(
             ) {
                 Text("Ucitavamo detalje vijesti...", modifier = Modifier.padding(top = 8.dp))
             }
-        } else if (odabranaVijest != null) {
+        } else if (selectedNews != null) {
             Column(
                 modifier = Modifier.padding(paddingValues).padding(16.dp).shadow(12.dp, shape = MaterialTheme.shapes.medium).background(plavaKartica, shape = MaterialTheme.shapes.medium).padding(16.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (!odabranaVijest!!.imageUrl.isNullOrBlank()) {
+                if (!selectedNews!!.imageUrl.isNullOrBlank()) {
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current).data(odabranaVijest!!.imageUrl).crossfade(true).build(),
+                        model = ImageRequest.Builder(LocalContext.current).data(selectedNews!!.imageUrl).crossfade(true).build(),
                         placeholder = painterResource(R.drawable.bosnjaci),
                         error = painterResource(R.drawable.bosnjaci),
                         contentDescription = "Naslovna slika vijesti",
@@ -253,13 +250,13 @@ fun NewsDetailsScreen(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     color = Color(0xFF2C3E50),
-                    text = odabranaVijest!!.title,
+                    text = selectedNews!!.title,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.testTag("details_title").padding(top = 16.dp).padding(bottom = 8.dp)
                 )
                 Text(
-                    text = odabranaVijest!!.snippet,
+                    text = selectedNews!!.snippet,
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.testTag("details_snippet")
@@ -268,7 +265,7 @@ fun NewsDetailsScreen(
                 Spacer(Modifier.height(8.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "Kategorija: ${odabranaVijest!!.category}",
+                        text = "Kategorija: ${selectedNews!!.category}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White,
                         fontSize = 14.sp,
@@ -276,7 +273,7 @@ fun NewsDetailsScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Izvor: ${odabranaVijest!!.source}",
+                        text = "Izvor: ${selectedNews!!.source}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White,
                         fontSize = 14.sp,
@@ -284,13 +281,13 @@ fun NewsDetailsScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Datum objave: ${odabranaVijest!!.publishedDate}",
+                        text = "Datum objave: ${selectedNews!!.publishedDate}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White,
                         fontSize = 14.sp,
                         modifier = Modifier.testTag("details_date").background(Color(90, 90, 160), shape = MaterialTheme.shapes.small).padding(horizontal = 5.dp, vertical = 5.dp)
                     )
-                    if (tagoviSlikeIzApi.isNotEmpty()) {
+                    if (apiImageTags.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Tagovi slike (Imagga API):",
@@ -298,14 +295,14 @@ fun NewsDetailsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        tagoviSlikeIzApi.forEach { tag ->
+                        apiImageTags.forEach { tag ->
                             Text(text = "• $tag", style = MaterialTheme.typography.bodyMedium)
                         }
-                    } else if (!odabranaVijest!!.imageUrl.isNullOrBlank()) {
+                    } else if (!selectedNews!!.imageUrl.isNullOrBlank()) {
                         Text(text = "", style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    if (tagoviZaPrikaz.isNotEmpty()) {
+                    if (displayTags.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Tagovi slike:",
@@ -313,16 +310,16 @@ fun NewsDetailsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        tagoviZaPrikaz.forEach { tag ->
+                        displayTags.forEach { tag ->
                             Text(text = "• $tag", style = MaterialTheme.typography.bodyMedium)
                         }
-                    } else if (!odabranaVijest!!.imageUrl.isNullOrBlank()) {
+                    } else if (!selectedNews!!.imageUrl.isNullOrBlank()) {
                         Text(text = "Nema dostupnih tagova za ovu vijest.", style = MaterialTheme.typography.bodyMedium)
                     }
 
 
-                    if (porukaGreske != null) {
-                        Text(text = porukaGreske!!, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                    if (errorMessage != null) {
+                        Text(text = errorMessage!!, color = Color.Red, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -335,7 +332,7 @@ fun NewsDetailsScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(3.dp))
-                povezaneVijesti(povezaneVijesti = vijestiKojeSuSlicne, navController = navController)
+                relatedNews(relatedNewsList = similarNewsList, navController = navController)
             }
         } else {
             Column(
@@ -349,8 +346,8 @@ fun NewsDetailsScreen(
                     color = Color.Gray,
                     modifier = Modifier.testTag("news_not_found_message")
                 )
-                if (porukaGreske != null) {
-                    Text(text = porukaGreske!!, color = Color.Red, style = MaterialTheme.typography.bodyMedium)
+                if (errorMessage != null) {
+                    Text(text = errorMessage!!, color = Color.Red, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -358,13 +355,13 @@ fun NewsDetailsScreen(
 }
 
 @Composable
-fun povezaneVijesti(povezaneVijesti: List<NewsItem>, navController: NavController) {
+fun relatedNews(relatedNewsList: List<NewsItem>, navController: NavController) {
     BackHandler {
         navController.popBackStack("/home", inclusive = false)
     }
     Column(modifier = Modifier.testTag("related_news_list"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (povezaneVijesti.isNotEmpty()) {
-            povezaneVijesti.forEachIndexed { index, vijest ->
+        if (relatedNewsList.isNotEmpty()) {
+            relatedNewsList.forEachIndexed { index, vijest ->
                 Text(
                     text = vijest.title,
                     style = MaterialTheme.typography.bodyLarge.copy(

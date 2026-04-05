@@ -13,20 +13,20 @@ import etf.ri.rma.newsfeedapp.model.NewsItem
 
 
 @Composable
-fun NewsList(listaVijesti: List<NewsItem>, stanje: LazyListState, navController: NavController, categoryFilter: String) {
+fun NewsList(newsList: List<NewsItem>, listState: LazyListState, navController: NavController, categoryFilter: String) {
     LazyColumn(Modifier.testTag("news_list"),
         contentPadding = PaddingValues(all = 8.dp),
-        state = stanje
+        state = listState
     ) {
-        if (listaVijesti.isNotEmpty()) {
-            items( listaVijesti, { it.uuid }) { // Koristimo uuid kao ključ
-                    trenutnaVijest ->
-                if (trenutnaVijest.isFeatured) {
-                    FeaturedNewsCard(nasaTrenutnaVijest = trenutnaVijest) { newsUuid ->
+        if (newsList.isNotEmpty()) {
+            items( newsList, { it.uuid }) { // Koristimo uuid kao ključ
+                    currentNews ->
+                if (currentNews.isFeatured) {
+                    FeaturedNewsCard(newsItem = currentNews) { newsUuid ->
                         navController.navigate("/details/$newsUuid")
                     }
                 } else {
-                    StandardNewsCard(nasaTrenutnaVijest = trenutnaVijest) { newsUuid ->
+                    StandardNewsCard(newsItem = currentNews) { newsUuid ->
                         navController.navigate("/details/$newsUuid")
                     }
                 }

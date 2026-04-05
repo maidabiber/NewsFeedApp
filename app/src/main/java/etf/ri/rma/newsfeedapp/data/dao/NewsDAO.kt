@@ -17,11 +17,22 @@ import java.util.concurrent.ConcurrentHashMap
 class NewsDAO {
 
     companion object {
+        private val properties = java.util.Properties().apply {
+            try {
+
+                val file = java.io.File("local.properties")
+                if (file.exists()) {
+                    java.io.FileInputStream(file).use { load(it) }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
         private const val CATEGORY_API_CALL_COOLDOWN = 30_000L
-        private const val apiKljuc = "yyVpad0txezSPa7MHtxKv9RYrhA9Jt9RK7lMekLa"
+        private val apiKey = properties.getProperty("NEWS_API_KEY")?: ""
         private const val baseUrl = "https://api.thenewsapi.com/v1/"
 
-        private val mapiranje = mapOf(
+        private val categoryMapping = mapOf(
             "politics" to "politics",
             "Sve" to null, "Politika" to "politics",
             "Sport" to "sports",
@@ -33,7 +44,7 @@ class NewsDAO {
 
         private val kesiraneVijesti = ConcurrentHashMap<String, NewsItem>()
         private lateinit var apiServis: NewsApiService
-        private val kesSlicnihVijesti = ConcurrentHashMap<String, List<NewsItem>>()
+        private val similarNewsCache = ConcurrentHashMap<String, List<NewsItem>>()
         private val cacheMutex = Mutex()
         private val similarNewsMutex = Mutex()
         private val lastApiCallTimes = ConcurrentHashMap<String, Long>()
@@ -150,7 +161,7 @@ class NewsDAO {
         @JvmStatic
         fun ocistiKesiranjeZbogTestova() {
             kesiraneVijesti.clear()
-            kesSlicnihVijesti.clear()
+            similarNewsCache.clear()
             lastApiCallTimes.clear()
         }
     }
@@ -165,7 +176,7 @@ class NewsDAO {
         apiServis = retrofitKlijent.create(NewsApiService::class.java)
     }
 
-    fun popuniSaPocetnimVijestima() {
+    fun populateWithInitialNews() {
         runBlocking {
             cacheMutex.withLock {
                 if (kesiraneVijesti.isEmpty()) {
@@ -175,39 +186,39 @@ class NewsDAO {
         }
     }
 
-    fun postaviApiServis(servis: NewsApiService) { apiServis = servis }
+    fun setApiService(servis: NewsApiService) { apiServis = servis }
 
-    fun vratiMapiranuKategoriju(lokalnaKat: String): String =
-        mapiranje[lokalnaKat]?.lowercase(Locale.ROOT) ?: "general"
+    fun getMappedCategory(lokalnaKat: String): String =
+        categoryMapping[lokalnaKat]?.lowercase(Locale.ROOT) ?: "general"
 
     fun getNewsItemApiCategory(kategorija: String): String =
-        mapiranje[kategorija]?.replaceFirstChar { it.titlecase(Locale.ROOT) } ?: "General"
+        categoryMapping[kategorija]?.replaceFirstChar { it.titlecase(Locale.ROOT) } ?: "General"
 
     suspend fun getTopStoriesByCategory(kategorija: String, forceRefresh: Boolean = false): List<NewsItem> =
         withContext(Dispatchers.IO) {
-            val posljednjiPoziv = lastApiCallTimes[kategorija] ?: 0L
-            val tren = System.currentTimeMillis()
-            val apiKategorija = vratiMapiranuKategoriju(kategorija)
+            val lastCallTime = lastApiCallTimes[kategorija] ?: 0L
+            val currentTime = System.currentTimeMillis()
+            val apiCategory = getMappedCategory(kategorija)
 
-            if (!forceRefresh && tren - posljednjiPoziv < CATEGORY_API_CALL_COOLDOWN) {
+            if (!forceRefresh && currentTime - lastCallTime < CATEGORY_API_CALL_COOLDOWN) {
                 return@withContext kesiraneVijesti.values.filter {
                     it.isFeatured && it.category.equals(
-                        apiKategorija,
+                        apiCategory,
                         true
                     )
                 }
             }
 
             return@withContext try {
-                val odgovor = apiServis.getNews(
-                    apiKey = apiKljuc,
-                    categories = vratiMapiranuKategoriju(kategorija),
+                val apiResponse = apiServis.getNews(
+                    apiKey = apiKey,
+                    categories = getMappedCategory(kategorija),
                     limit = 40
                 )
-                if (odgovor.data.isEmpty()) {
+                if (apiResponse.data.isEmpty()) {
                     return@withContext kesiraneVijesti.values.filter {
                         it.isFeatured && it.category.equals(
-                            apiKategorija,
+                            apiCategory,
                             true
                         )
                     }
@@ -215,11 +226,11 @@ class NewsDAO {
 
                 val noveIstaknuteVijesti = mutableListOf<NewsItem>()
                 cacheMutex.withLock {
-                    val newIds = odgovor.data.map { it.uuid }.toSet()
+                    val newIds = apiResponse.data.map { it.uuid }.toSet()
 
                     kesiraneVijesti.values.forEach {
                         if (it.isFeatured && it.category.equals(
-                                apiKategorija,
+                                apiCategory,
                                 true
                             ) && it.uuid !in newIds
                         ) {
@@ -227,7 +238,7 @@ class NewsDAO {
                         }
                     }
 
-                    odgovor.data.forEach { apiClanak ->
+                    apiResponse.data.forEach { apiClanak ->
                         val item = apiClanak.toNewsItem().copy(
                             isFeatured = true,
                             category = getNewsItemApiCategory(kategorija)
@@ -236,7 +247,7 @@ class NewsDAO {
                         noveIstaknuteVijesti += item
                     }
                 }
-                lastApiCallTimes[kategorija] = tren
+                lastApiCallTimes[kategorija] = currentTime
                 noveIstaknuteVijesti
             } catch (e: Exception) {
                 emptyList()
@@ -250,14 +261,14 @@ class NewsDAO {
         }
 
         similarNewsMutex.withLock {
-            kesSlicnihVijesti[uuid]?.let {
+            similarNewsCache[uuid]?.let {
                 return@withContext it.take(2)
             }
 
             return@withContext try {
-                val odgovor = apiServis.getSimilarStories(uuid, apiKljuc)
+                val apiResponse = apiServis.getSimilarStories(uuid, apiKey)
 
-                val rezultat = odgovor.data.map { apiClanak ->
+                val rezultat = apiResponse.data.map { apiClanak ->
                     apiClanak.toNewsItem().copy(isFeatured = false)
                 }.take(2).also { slicneVijesti ->
                     slicneVijesti.forEach {
@@ -265,7 +276,7 @@ class NewsDAO {
                     }
                 }
 
-                kesSlicnihVijesti[uuid] = rezultat
+                similarNewsCache[uuid] = rezultat
                 rezultat
             } catch (e: Exception) {
                 emptyList()
