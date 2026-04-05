@@ -1,6 +1,6 @@
 # NewsFeedApp 
 
-NewsFeedApp aplikacija je projekat razvijen u sklopu predmeta **Razvoj mobilnih aplikacija** na trećem semestru, **Elektrotehnički fakultet Sarajevo** (smjer Računarstvo i informatika). 
+NewsFeedApp aplikacija je individualni projekat razvijen u sklopu predmeta **Razvoj mobilnih aplikacija** na trećem semestru, **Elektrotehnički fakultet Sarajevo** (smjer Računarstvo i informatika). 
 
 ##  Opis projekta
 
